@@ -6,8 +6,8 @@ FROM ${BASE_IMAGE} AS base
 
 ARG COMFYUI_VERSION=v0.33.1
 ARG COMFY_CLI_VERSION=1.16.0
-ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
-ARG PYTORCH_PACKAGES="torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0"
+ARG PYTORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
+ARG PYTORCH_PACKAGES="torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0"
 ARG EXTRA_PYTHON_PACKAGES=""
 ARG EXTRA_PYTHON_INDEX_URL=""
 ARG INSTALL_LTX_VIDEO_NODES=true
