@@ -1,4 +1,4 @@
-name: Manual Build All Targets
+name: promptMotion Manual Build All Targets
 
 on:
   workflow_dispatch:
