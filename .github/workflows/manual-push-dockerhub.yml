@@ -63,6 +63,7 @@ jobs:
             *.args.RELEASE_VERSION=${{ env.RELEASE_VERSION }}
 
       - name: Update description on Docker Hub
+        if: github.event.inputs.target_to_build != 'ltx2-5-distilled-int8-bounded'
         uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}

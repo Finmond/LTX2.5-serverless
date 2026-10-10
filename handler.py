@@ -24,6 +24,7 @@ import boto3
 from pathlib import Path
 from botocore.config import Config
 import redis.asyncio as redis
+import comfy_deadline
 
 from workflow_support import (
     apply_input_filename_map,
@@ -156,6 +157,8 @@ def decode_cached_response(raw_value: str) -> dict | None:
         return None
 
     response = dict(cached_response)
+    if os.getenv("FINMOND_BOUNDED_RENDER") == "1":
+        response["metadata"] = dict(response.get("metadata") or {}, cache_hit=True)
     response["cached"] = True
     return response
 
@@ -323,7 +326,8 @@ async def execute_workflow_with_failover(
     is_vip: bool,
     start_time: float,
 ) -> tuple[str, dict]:
-    for failover_attempt in range(2):
+    attempts = 1 if os.getenv("FINMOND_BOUNDED_RENDER") == "1" else 2
+    for failover_attempt in range(attempts):
         target_node = None
         try:
             target_node = await GPUFleetManager.get_best_node(session, is_vip)
@@ -350,7 +354,7 @@ async def execute_workflow_with_failover(
             logger.warning(f"[{job_id}] GPU {target_node} failed. ({str(e)})")
             if target_node:
                 await redis_client.setex(f"circuit_breaker:{target_node}", 60, "DEAD")
-            if failover_attempt == 1:
+            if failover_attempt == attempts - 1:
                 raise RuntimeError("All failover attempts exhausted.")
             logger.info(f"[{job_id}] Initiating Seamless Failover to new GPU...")
 
@@ -392,6 +396,8 @@ async def handle_custom_job(job_id: str, job_input: dict, start_time: float) -> 
             f"job_status:{job_id}",
             mapping={"status": "completed", "cache_hit": "true"},
         )
+        if os.getenv("FINMOND_BOUNDED_RENDER") == "1":
+            cached_response.setdefault("metadata", {})["cache_hit"] = True
         return cached_response
 
     lock_acquired = await redis_client.set(cache_hash, lock_token, ex=1200, nx=True)
@@ -534,22 +540,47 @@ async def handler(job: dict) -> dict:
     start_time = time.time()
 
     if job_input.get("health_check") is True:
+        if os.getenv("FINMOND_BOUNDED_RENDER") == "1":
+            comfy_deadline.ownership()
+            return {"status": "healthy", "service": "ltx-2.5-worker",
+                    "bounded_render_protocol": comfy_deadline.PROTOCOL,
+                    "render_timeout_seconds_limit": comfy_deadline.LIMIT}
         return {"status": "healthy", "service": "ltx-2.5-worker"}
     
     # TELEMETRY: Announce Job Start
     await redis_client.hset(f"job_status:{job_id}", mapping={"status": "initializing", "progress": "0%"})
     await redis_client.expire(f"job_status:{job_id}", 3600)
 
+    lease = None
     try:
+        if os.getenv("FINMOND_BOUNDED_RENDER") == "1":
+            if not is_workflow_job(job_input) or COMFY_NODES != ["127.0.0.1:8188"]:
+                raise comfy_deadline.GuardError("Bounded rendering requires a local workflow")
+            lease = comfy_deadline.arm(job_id, job_input.get("render_timeout_seconds"))
         if is_workflow_job(job_input):
             response = await handle_workflow_job(job_id, job_input, start_time)
         else:
             response = await handle_custom_job(job_id, job_input, start_time)
 
+        if lease is not None:
+            comfy_deadline.finish(lease, success=True)
+            response.setdefault("metadata", {}).update({
+                "bounded_render_protocol": comfy_deadline.PROTOCOL,
+                "input_sha256": hashlib.sha256(json.dumps(job_input, sort_keys=True,
+                    separators=(",", ":")).encode()).hexdigest(),
+                "render_timeout_seconds": job_input["render_timeout_seconds"],
+                "started_at": start_time, "completed_at": time.time(),
+            })
+            lease = None
         await redis_client.hset(f"job_status:{job_id}", mapping={"status": "completed"})
         return response
 
     except Exception as e:
+        if lease is not None:
+            try:
+                comfy_deadline.finish(lease, success=False)
+            except Exception:
+                pass
         await redis_client.hset(f"job_status:{job_id}", mapping={"status": "failed", "error": str(e)})
         return {"status": "error", "error": str(e)}
 

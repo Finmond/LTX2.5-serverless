@@ -182,12 +182,23 @@ start_comfyui() {
         comfy_args+=(--listen)
     fi
 
-    "${comfy_args[@]}" &
+    if [ "${FINMOND_BOUNDED_RENDER:-0}" == "1" ]; then
+        if [ "${RUN_MODE}" != "worker" ] || [ "${COMFY_NODES:-127.0.0.1:8188}" != "127.0.0.1:8188" ]; then
+            echo "worker-comfyui: Bounded rendering requires one private worker renderer" >&2
+            exit 1
+        fi
+        python -u /comfy_deadline.py "${comfy_args[@]}" &
+    else
+        "${comfy_args[@]}" &
+    fi
     COMFY_PID="$!"
     echo "${COMFY_PID}" > "$COMFY_PID_FILE"
 }
 
 start_frontend() {
+    if [ "${FINMOND_BOUNDED_RENDER:-0}" == "1" ]; then
+        return
+    fi
     if [ "${LTX_FRONTEND_ENABLED:-true}" != "true" ]; then
         echo "worker-comfyui: Frontend disabled"
         return

@@ -1,0 +1,9 @@
+# Preserve the deployed model/runtime layers. Only the guarded entrypoint and
+# handler change. Supply the existing base image by verified immutable digest.
+ARG LTX_RUNTIME_IMAGE
+FROM ${LTX_RUNTIME_IMAGE}
+COPY src/start.sh /start.sh
+COPY comfy_deadline.py /comfy_deadline.py
+COPY handler.py /handler.py
+ENV FINMOND_BOUNDED_RENDER=1 RUN_MODE=worker LTX_FRONTEND_ENABLED=false
+CMD ["/start.sh"]
