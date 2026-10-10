@@ -394,6 +394,8 @@ async def handle_custom_job(job_id: str, job_input: dict, start_time: float) -> 
             f"job_status:{job_id}",
             mapping={"status": "completed", "cache_hit": "true"},
         )
+        if os.getenv("FINMOND_BOUNDED_RENDER") == "1":
+            cached_response.setdefault("metadata", {})["cache_hit"] = True
         return cached_response
 
     lock_acquired = await redis_client.set(cache_hash, lock_token, ex=1200, nx=True)
@@ -560,6 +562,13 @@ async def handler(job: dict) -> dict:
 
         if lease is not None:
             comfy_deadline.finish(lease, success=True)
+            response.setdefault("metadata", {}).update({
+                "bounded_render_protocol": comfy_deadline.PROTOCOL,
+                "input_sha256": hashlib.sha256(json.dumps(job_input, sort_keys=True,
+                    separators=(",", ":")).encode()).hexdigest(),
+                "render_timeout_seconds": job_input["render_timeout_seconds"],
+                "started_at": start_time, "completed_at": time.time(),
+            })
             lease = None
         await redis_client.hset(f"job_status:{job_id}", mapping={"status": "completed"})
         return response
