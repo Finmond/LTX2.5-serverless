@@ -25,12 +25,12 @@ jobs:
       - name: Validate bounded image destination
         if: github.event.inputs.target_to_build == 'ltx2-5-distilled-int8-bounded'
         env:
-          IMAGE_NAMESPACE: ${{ vars.DOCKERHUB_REPO }}
-          IMAGE_NAME: ${{ vars.DOCKERHUB_IMG }}
+          IMAGE_NAMESPACE: ${{ vars.DOCKERHUB_REPO || secrets.DOCKERHUB_REPO }}
+          IMAGE_NAME: ${{ vars.DOCKERHUB_IMG || secrets.DOCKERHUB_IMG }}
         run: |
           set -euo pipefail
           if [[ ! "$IMAGE_NAMESPACE" =~ ^[a-z0-9][a-z0-9_.-]*$ ]] || [[ ! "$IMAGE_NAME" =~ ^[a-z0-9][a-z0-9_.-]*$ ]]; then
-            echo "::error::Set DOCKERHUB_REPO and DOCKERHUB_IMG as repository Actions variables for the existing owned image destination."
+            echo "::error::The existing DOCKERHUB_REPO and DOCKERHUB_IMG bindings did not resolve from Actions Variables or Secrets to a valid image destination."
             exit 1
           fi
 
@@ -60,10 +60,14 @@ jobs:
           setup-only: true
 
       - name: Set environment variables
+        env:
+          IMAGE_NAMESPACE: ${{ vars.DOCKERHUB_REPO || secrets.DOCKERHUB_REPO }}
+          IMAGE_NAME: ${{ vars.DOCKERHUB_IMG || secrets.DOCKERHUB_IMG }}
+          IMAGE_VERSION: ${{ github.event.inputs.version }}
         run: |
-          echo "DOCKERHUB_REPO=${{ vars.DOCKERHUB_REPO }}" >> $GITHUB_ENV
-          echo "DOCKERHUB_IMG=${{ vars.DOCKERHUB_IMG }}" >> $GITHUB_ENV
-          echo "RELEASE_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV # Use input version
+          printf 'DOCKERHUB_REPO=%s\n' "$IMAGE_NAMESPACE" >> "$GITHUB_ENV"
+          printf 'DOCKERHUB_IMG=%s\n' "$IMAGE_NAME" >> "$GITHUB_ENV"
+          printf 'RELEASE_VERSION=%s\n' "$IMAGE_VERSION" >> "$GITHUB_ENV"
 
       - name: Build and push the images to Docker Hub
         uses: docker/bake-action@v7
