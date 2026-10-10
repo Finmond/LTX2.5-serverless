@@ -104,3 +104,11 @@ target "ltx2-5-distilled-int8-cu128" {
   }
   tags = ["${DOCKERHUB_REPO}/${DOCKERHUB_IMG}:${RELEASE_VERSION}-ltx2.5-distilled-int8-cu128"]
 }
+
+target "ltx2-5-distilled-int8-bounded" {
+  inherits = ["ltx2-5-distilled-int8"]
+  args = {
+    FINMOND_BOUNDED_RENDER = "1"
+  }
+  tags = ["${DOCKERHUB_REPO}/${DOCKERHUB_IMG}:${RELEASE_VERSION}-ltx2.5-bounded-cu130"]
+}

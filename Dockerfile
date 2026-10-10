@@ -16,6 +16,7 @@ ARG INSTALL_COMFYUI_DOWNLOADER=true
 ARG COMFYUI_DOWNLOADER_REF=03146df738191004a8aad8264dca5c3530907f56
 ARG LTX25_PRELOAD_VARIANT=""
 ARG LTX25_PRELOAD_PROMPT_ENHANCER=true
+ARG FINMOND_BOUNDED_RENDER=0
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -99,6 +100,7 @@ COPY src/extra_model_paths.yaml ./extra_model_paths.yaml
 
 WORKDIR /
 COPY src/start.sh src/bootstrap_workspace.sh src/bootstrap_ltx25.sh src/verify_comfy_models.py src/network_volume.py handler.py workflow_support.py frontend_app.py ltx_payload_builder.py video_ltx2_5_i2v_API.json test_input.json ./
+COPY comfy_deadline.py ./comfy_deadline.py
 COPY frontend /frontend
 COPY scripts/comfy-node-install.sh /usr/local/bin/comfy-node-install
 COPY scripts/comfy-manager-set-mode.sh /usr/local/bin/comfy-manager-set-mode
@@ -110,6 +112,7 @@ RUN chmod +x \
         /usr/local/bin/comfy-manager-set-mode
 
 ENV LTX25_PRELOAD_VARIANT=${LTX25_PRELOAD_VARIANT} \
-    LTX25_PRELOAD_PROMPT_ENHANCER=${LTX25_PRELOAD_PROMPT_ENHANCER}
+    LTX25_PRELOAD_PROMPT_ENHANCER=${LTX25_PRELOAD_PROMPT_ENHANCER} \
+    FINMOND_BOUNDED_RENDER=${FINMOND_BOUNDED_RENDER}
 
 CMD ["/start.sh"]
