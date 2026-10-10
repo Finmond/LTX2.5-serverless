@@ -22,6 +22,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Validate bounded image destination
+        if: github.event.inputs.target_to_build == 'ltx2-5-distilled-int8-bounded'
+        env:
+          IMAGE_NAMESPACE: ${{ vars.DOCKERHUB_REPO }}
+          IMAGE_NAME: ${{ vars.DOCKERHUB_IMG }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$IMAGE_NAMESPACE" =~ ^[a-z0-9][a-z0-9_.-]*$ ]] || [[ ! "$IMAGE_NAME" =~ ^[a-z0-9][a-z0-9_.-]*$ ]]; then
+            echo "::error::Set DOCKERHUB_REPO and DOCKERHUB_IMG as repository Actions variables for the existing owned image destination."
+            exit 1
+          fi
+
       - name: Clear space to remove unused folders
         run: |
           rm -rf /usr/share/dotnet
