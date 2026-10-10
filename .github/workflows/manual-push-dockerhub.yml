@@ -14,7 +14,7 @@ on:
 
 jobs:
   manual_push:
-    runs-on: ${{ github.event.inputs.target_to_build == 'ltx2-5-distilled-int8-bounded' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
+    runs-on: ${{ fromJSON(github.event.inputs.target_to_build == 'ltx2-5-distilled-int8-bounded' && '["ubuntu-latest"]' || '["blacksmith-8vcpu-ubuntu-2204", "linux"]') }}
     permissions:
       contents: read
 
