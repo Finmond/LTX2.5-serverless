@@ -14,7 +14,7 @@ on:
 
 jobs:
   manual_push:
-    runs-on: [blacksmith-8vcpu-ubuntu-2204, linux]
+    runs-on: ${{ github.event.inputs.target_to_build == 'ltx2-5-distilled-int8-bounded' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
     permissions:
       contents: read
 
@@ -42,6 +42,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: blacksmith docker layer cache
+        if: github.event.inputs.target_to_build != 'ltx2-5-distilled-int8-bounded'
         uses: useblacksmith/build-push-action@v2
         with:
           setup-only: true
