@@ -157,6 +157,8 @@ def decode_cached_response(raw_value: str) -> dict | None:
         return None
 
     response = dict(cached_response)
+    if os.getenv("FINMOND_BOUNDED_RENDER") == "1":
+        response["metadata"] = dict(response.get("metadata") or {}, cache_hit=True)
     response["cached"] = True
     return response
 

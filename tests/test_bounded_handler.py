@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import json
 import os
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
@@ -21,9 +23,22 @@ class BoundedHandlerTests(unittest.TestCase):
                 "workflow": {"1": {"class_type": "Fixture", "inputs": {}}},
                 "render_timeout_seconds": 600}}))
             self.assertEqual(result["status"], "success")
+            expected = {"workflow": {"1": {"class_type": "Fixture", "inputs": {}}},
+                        "render_timeout_seconds": 600}
+            self.assertEqual(result["metadata"]["input_sha256"], hashlib.sha256(
+                json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest())
+            self.assertEqual(result["metadata"]["bounded_render_protocol"], comfy_deadline.PROTOCOL)
+            self.assertGreaterEqual(result["metadata"]["completed_at"], result["metadata"]["started_at"])
             arm.assert_called_once_with("one-job", 600)
             render.assert_awaited_once()
             finish.assert_called_once_with(lease, success=True)
+
+    def test_cached_result_is_explicitly_excluded_from_fresh_calibration(self):
+        module, _ = self.load_handler()
+        with patch.dict(os.environ, {"FINMOND_BOUNDED_RENDER": "1"}):
+            result = module.decode_cached_response(json.dumps({"status": "success"}))
+        self.assertTrue(result["metadata"]["cache_hit"])
+        self.assertTrue(result["cached"])
 
     def test_invalid_or_missing_guard_prevents_inference(self):
         module, _ = self.load_handler()
