@@ -2,6 +2,7 @@ runpod~=1.12.0
 cryptography==50.0.0
 websocket-client>=1.8.0,<2
 requests>=2.32.0,<3
+certifi==2026.10.23
 aiohttp>=3.13.0,<4
 redis>=7.0.0,<8
 boto3>=1.40.0,<2

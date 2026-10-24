@@ -2,6 +2,15 @@
 
 set -euo pipefail
 
+# A persistent virtualenv can predate this image. Prefer the immutable patched
+# CA package without deleting or reinstalling the customer's cached environment.
+if [ -d /opt/finmond-tls ]; then
+    export PYTHONPATH="/opt/finmond-tls${PYTHONPATH:+:${PYTHONPATH}}"
+fi
+if [ -f /runtime_security.py ]; then
+    python /runtime_security.py --verify
+fi
+
 if [ "${RUNPOD_HUB_VALIDATION:-false}" = "true" ]; then
     echo "worker-comfyui: RunPod Hub validation mode; starting handler without runtime bootstrap"
     exec python -u /handler.py
@@ -9,6 +18,9 @@ fi
 
 source /bootstrap_workspace.sh
 bootstrap_workspace
+if [ -f /runtime_security.py ]; then
+    python /runtime_security.py --verify
+fi
 source /bootstrap_ltx25.sh
 bootstrap_ltx25
 echo "worker-comfyui: Bootstrap complete; starting runtime services"

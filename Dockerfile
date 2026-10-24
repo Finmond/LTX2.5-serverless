@@ -44,6 +44,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && python -m venv /opt/venv \
     && rm -rf /var/lib/apt/lists/*
 
+COPY runtime_security.py /runtime_security.py
+RUN python /runtime_security.py --harden-system \
+    && update-ca-certificates --fresh
+
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     python -m pip install --upgrade pip setuptools wheel \
     && python -m pip install ${PYTORCH_PACKAGES} --index-url "${PYTORCH_INDEX_URL}"
@@ -82,6 +86,11 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
             python -m pip install ${EXTRA_PYTHON_PACKAGES}; \
         fi; \
     fi \
+    && python -m pip install 'certifi==2026.10.23' \
+    && python /runtime_security.py --verify \
+    && mkdir -p /opt/finmond-tls \
+    && cp -a /opt/venv/lib/python3.12/site-packages/certifi \
+        /opt/venv/lib/python3.12/site-packages/certifi-2026.10.23.dist-info /opt/finmond-tls/ \
     && find /opt/venv -type d -name __pycache__ -prune -exec rm -rf '{}' + \
     && find /opt/venv -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 
