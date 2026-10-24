@@ -50,6 +50,7 @@ jobs:
           python3 -m compileall -q \
             handler.py \
             comfy_deadline.py \
+            runtime_security.py \
             frontend_app.py \
             ltx_payload_builder.py \
             workflow_support.py \
@@ -57,7 +58,7 @@ jobs:
 
       - name: Run workflow and payload tests
         run: |
-          python3 -m pip install 'aiohttp>=3.13.0,<4' 'fastapi>=0.116.0,<1' 'httpx>=0.28,<1'
+          python3 -m pip install 'aiohttp>=3.13.0,<4' 'fastapi>=0.116.0,<1' 'httpx>=0.28,<1' 'certifi==2026.10.23'
           python3 -m unittest \
             tests.test_comfy_deadline \
             tests.test_bounded_handler \
@@ -68,6 +69,7 @@ jobs:
             tests.test_workflow_support \
             tests.test_frontend_app \
             tests.test_security_boundaries \
+            tests.test_runtime_security \
             -v
 
       - name: Validate Docker bake targets

@@ -79,6 +79,26 @@ jobs:
             *.args.DOCKERHUB_IMG=${{ env.DOCKERHUB_IMG }}
             *.args.RELEASE_VERSION=${{ env.RELEASE_VERSION }}
 
+      - name: Verify bounded image TLS without a GPU or network
+        if: github.event.inputs.target_to_build == 'ltx2-5-distilled-int8-bounded'
+        env:
+          PUBLISHED_IMAGE: ${{ env.DOCKERHUB_REPO }}/${{ env.DOCKERHUB_IMG }}:${{ env.RELEASE_VERSION }}-ltx2.5-bounded-cu130
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --entrypoint python "$PUBLISHED_IMAGE" /runtime_security.py --verify | tee runtime-security-attestation.json
+          docker run --rm --network none --env PYTHONPATH=/opt/finmond-tls --entrypoint python "$PUBLISHED_IMAGE" -c 'import certifi,importlib.metadata;assert certifi.__file__.startswith("/opt/finmond-tls/");assert importlib.metadata.version("certifi")=="2026.10.23";print("Immutable patched CA overlay verified")'
+          docker image inspect --format '{{json .RepoDigests}}' "$PUBLISHED_IMAGE" > image-digests.json
+
+      - name: Retain non-secret bounded image security evidence
+        if: github.event.inputs.target_to_build == 'ltx2-5-distilled-int8-bounded'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: bounded-tls-security-${{ github.run_id }}
+          path: |
+            runtime-security-attestation.json
+            image-digests.json
+          retention-days: 14
+
       - name: Update description on Docker Hub
         if: github.event.inputs.target_to_build != 'ltx2-5-distilled-int8-bounded'
         uses: peter-evans/dockerhub-description@v5
